@@ -1,7 +1,7 @@
 {
-  "homepage": "https://github.com/myorg/rules_mylang",
+  "homepage": "https://github.com/bzlparty/rules_bats",
   "maintainers": [],
-  "repository": ["github:myorg/rules_mylang"],
+  "repository": ["github:bzlparty/rules_bats"],
   "versions": [],
   "yanked_versions": {}
 }
