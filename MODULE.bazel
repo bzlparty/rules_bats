@@ -15,7 +15,7 @@ bazel_dep(name = "aspect_bazel_lib", version = "1.32.1", dev_dependency = True)
 bazel_dep(name = "buildifier_prebuilt", version = "6.1.0", dev_dependency = True)
 
 bats = use_extension("//bats:extensions.bzl", "bats")
-bats.toolchain(bats_version = "1.14.2")
+bats.toolchain(bats_version = "1.10.0")
 use_repo(bats, "bats_toolchains")
 
 register_toolchains("@bats_toolchains//:all")

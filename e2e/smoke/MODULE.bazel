@@ -5,3 +5,7 @@ local_path_override(
     module_name = "rules_bats",
     path = "../..",
 )
+
+bats = use_extension("@rules_bats//bats:extensions.bzl", "bats")
+bats.toolchain(bats_version = "1.10.0")
+use_repo(bats, "bats_toolchains")

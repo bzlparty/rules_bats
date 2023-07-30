@@ -1,0 +1,13 @@
+load("@rules_bats//bats:toolchain.bzl", "bats_toolchain")
+
+filegroup(
+    name = "bats_core_files",
+    srcs = glob(["lib/bats-core/*.bash", "libexec/bats-core/*"]),
+    visibility = ["//visibility:public"],
+)
+
+bats_toolchain(
+    name = "bats_toolchain",
+    target_tool = "bin/bats",
+    target_tool_files = "bats_core_files",
+)

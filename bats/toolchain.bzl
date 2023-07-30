@@ -21,8 +21,6 @@ def _to_manifest_path(ctx, file):
 def _bats_toolchain_impl(ctx):
     if ctx.attr.target_tool and ctx.attr.target_tool_path:
         fail("Can only set one of target_tool or target_tool_path but both were set.")
-    if not ctx.attr.target_tool and not ctx.attr.target_tool_path:
-        fail("Must set one of target_tool or target_tool_path.")
 
     tool_files = []
     target_tool_path = ctx.attr.target_tool_path
@@ -31,27 +29,29 @@ def _bats_toolchain_impl(ctx):
         tool_files = ctx.attr.target_tool.files.to_list()
         target_tool_path = _to_manifest_path(ctx, tool_files[0])
 
-    # Make the $(tool_BIN) variable available in places like genrules.
-    # See https://docs.bazel.build/versions/main/be/make-variables.html#custom_variables
+    if ctx.attr.target_tool_files:
+        tool_files = tool_files + ctx.attr.target_tool_files.files.to_list()
+
     template_variables = platform_common.TemplateVariableInfo({
         "BATS_BIN": target_tool_path,
     })
+
     default = DefaultInfo(
         files = depset(tool_files),
         runfiles = ctx.runfiles(files = tool_files),
     )
+
     batsinfo = BatsInfo(
         target_tool_path = target_tool_path,
         tool_files = tool_files,
     )
 
-    # Export all the providers inside our ToolchainInfo
-    # so the resolved_toolchain rule can grab and re-export them.
     toolchain_info = platform_common.ToolchainInfo(
         batsinfo = batsinfo,
         template_variables = template_variables,
         default = default,
     )
+
     return [
         default,
         toolchain_info,
@@ -65,6 +65,11 @@ bats_toolchain = rule(
             doc = "A hermetically downloaded executable target for the target platform.",
             mandatory = False,
             allow_single_file = True,
+        ),
+        "target_tool_files": attr.label(
+            doc = "Files required in runfiles to make the tool executable available.",
+            mandatory = False,
+            allow_files = True,
         ),
         "target_tool_path": attr.string(
             doc = "Path to an existing executable for the target platform.",

@@ -1,17 +1,12 @@
-"""Provides a simple way to test your rules as an external workspace.
-Add a basic smoke-test target below.
-"""
+load("@rules_bats//bats:defs.bzl", "bats_test")
 
-load("@bazel_skylib//rules:build_test.bzl", "build_test")
-# load("rules_bats//bats:defs.bzl", "...")
+bats_test(
+  name = "run",
+  spec = "run.bats",
+  data = ["script.sh"],
+)
 
-# Replace with a usage of your rule/macro
-filegroup(name = "empty")
-
-build_test(
-    name = "smoke_test",
-    targets = [
-        # targets you add above
-        ":empty",
-    ],
+bats_test(
+  name = "bc",
+  spec = "bc.bats",
 )
