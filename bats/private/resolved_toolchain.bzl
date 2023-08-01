@@ -14,7 +14,6 @@ def _resolved_toolchain_impl(ctx):
         toolchain_info,
         toolchain_info.default,
         toolchain_info.batsinfo,
-        toolchain_info.template_variables,
     ]
 
 # Copied from java_toolchain_alias

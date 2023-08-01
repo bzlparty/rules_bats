@@ -1,4 +1,0 @@
-load("@rules_bats//bats:toolchain.bzl", "bats_toolchain")
-
-filegroup(name = "bats_files", srcs = ["bin/bats"] + glob(["lib/*", "execlib/*"]))
-bats_toolchain(name = "bats_toolchain", target_tool = ":bats_files",

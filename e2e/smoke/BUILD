@@ -1,12 +1,23 @@
 load("@rules_bats//bats:defs.bzl", "bats_test")
 
 bats_test(
-  name = "run",
-  spec = "run.bats",
-  data = ["script.sh"],
+    name = "run",
+    data = ["script.sh"],
+    test = "run.bats",
 )
 
 bats_test(
-  name = "bc",
-  spec = "bc.bats",
+    name = "bc",
+    test = "bc.bats",
+)
+
+bats_test(
+    name = "assert",
+    test = "assert.bats",
+)
+
+bats_test(
+    name = "fail",
+    tags = ["manual"],
+    test = "fail.bats",
 )

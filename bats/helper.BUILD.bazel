@@ -1,0 +1,7 @@
+"BUILD file for helper libraries"
+
+filegroup(
+    name = "files",
+    srcs = glob(["**/*.bash"], exclude = ["test/*"]),
+    visibility = ["//visibility:public"],
+)

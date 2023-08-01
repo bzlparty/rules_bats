@@ -23,39 +23,108 @@ def rules_bats_dependencies():
         ],
     )
 
-_DOC = "Fetch external tools needed for bats toolchain"
-_ATTRS = {
-    "version": attr.string(mandatory = True, values = TOOL_VERSIONS.keys()),
+def _download_and_extract(ctx, package, version):
+    url = "https://github.com/bats-core/{package}/archive/refs/tags/v{version}.tar.gz".format(
+        package = package,
+        version = version,
+    )
+    ctx.download_and_extract(
+        url = url,
+        integrity = TOOL_VERSIONS[package][version],
+        stripPrefix = "%s-%s" % (package, version),
+    )
+
+_BATS_CORE_ATTRS = {
+    "version": attr.string(mandatory = True),
+    "libs": attr.string_dict(mandatory = False),
 }
 
-def _bats_repo_impl(repository_ctx):
-    url = "https://github.com/bats-core/bats-core/archive/refs/tags/v{0}.tar.gz".format(
-        repository_ctx.attr.version,
+def _bats_pkg_repo_impl(repository_ctx, package, template, substitutions = {}):
+    _download_and_extract(
+        repository_ctx,
+        package = package,
+        version = repository_ctx.attr.version,
     )
-    repository_ctx.download_and_extract(
-        url = url,
-        integrity = TOOL_VERSIONS[repository_ctx.attr.version],
-        stripPrefix = "bats-core-%s" % repository_ctx.attr.version,
-    )
-    repository_ctx.template("BUILD.bazel", Label("//bats:core.BUILD.bazel"))
 
-bats_repositories = repository_rule(
-    _bats_repo_impl,
-    doc = _DOC,
-    attrs = _ATTRS,
+    repository_ctx.template(
+        "BUILD.bazel",
+        template,
+        substitutions = substitutions,
+    )
+
+def _bats_core_repo_impl(repository_ctx):
+    _bats_pkg_repo_impl(
+        repository_ctx,
+        package = "bats-core",
+        substitutions = {
+            "{libs}": json.encode(repository_ctx.attr.libs),
+        },
+        template = Label("//bats:core.BUILD.bazel.tpl"),
+    )
+
+bats_core_repository = repository_rule(
+    _bats_core_repo_impl,
+    doc = "Fetach bats-core repository",
+    attrs = _BATS_CORE_ATTRS,
 )
 
-# Wrapper macro around everything above, this is the primary API
-def bats_register_toolchains(name, register = True, **kwargs):
-    bats_repositories(
+_BATS_HELPER_ATTRS = {
+    "version": attr.string(mandatory = True),
+    "lib": attr.string(mandatory = True),
+}
+
+def _bats_lib_repo_impl(repository_ctx):
+    _bats_pkg_repo_impl(
+        repository_ctx,
+        package = repository_ctx.attr.lib,
+        template = Label("//bats:helper.BUILD.bazel"),
+    )
+
+bats_lib_repository = repository_rule(
+    _bats_lib_repo_impl,
+    doc = "Fetch BATS helper library",
+    attrs = _BATS_HELPER_ATTRS,
+)
+
+_LATEST_BATS_CORE_VERSION = "1.10.0"
+_LATEST_BATS_ASSERT_VERSION = "2.1.0"
+_LATEST_BATS_SUPPORT_VERSION = "0.3.0"
+_DEFAULT_NAME = "bats"
+DEFAULT_LIBS = {
+    "bats-support": _LATEST_BATS_SUPPORT_VERSION,
+    "bats-assert": _LATEST_BATS_ASSERT_VERSION,
+}
+
+def bats_register_toolchain(name = _DEFAULT_NAME, version = _LATEST_BATS_CORE_VERSION, libs = DEFAULT_LIBS, register = True):
+    """Basic toolchain wrapper
+
+    Args:
+      name: Name of the toolchain
+      libs: dict of helper libs and their version
+      version: version of bats-core
+      register: Register the toolchain
+     """
+
+    lib_repo_map = {}
+    for (lib, lib_version) in libs.items():
+        lib_repo_name = "%s_%s" % (name, lib)
+        bats_lib_repository(
+            name = lib_repo_name,
+            lib = lib,
+            version = lib_version,
+        )
+        lib_repo_map["@%s//:files" % lib_repo_name] = lib
+
+    bats_core_repository(
         name = name,
-        version = kwargs["bats_version"],
+        libs = lib_repo_map,
+        version = version,
     )
 
     if register:
-        native.register_toolchains("@%s_toolchains//:toolchain" % name)
+        native.register_toolchains("@%s_toolchain//:toolchain" % name)
 
     toolchains_repo(
-        name = name + "_toolchains",
+        name = name + "_toolchain",
         user_repository_name = name,
     )
