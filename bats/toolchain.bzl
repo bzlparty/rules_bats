@@ -1,14 +1,15 @@
-"""This module implements the language-specific toolchain rule.
+"""This module implements the BATS toolchain rule.
 """
 
-BatsInfo = provider(
-    doc = "Information about how to invoke the tool executable.",
-    fields = {
-        "target_tool_path": "Path to the tool executable for the target platform.",
-        "tool_files": """Files required in runfiles to make the tool executable available.
+_bats_info_fields = {
+    "bin": "BATS binary",
+    "files": "Files to use the package",
+    "libs": "Helper files to include",
+}
 
-May be empty if the target_tool_path points to a locally installed tool binary.""",
-    },
+BatsInfo = provider(
+    doc = "Information about the BATS setup.",
+    fields = _bats_info_fields,
 )
 
 # Avoid using non-normalized paths (workspace/../other_workspace/path)
@@ -18,38 +19,43 @@ def _to_manifest_path(ctx, file):
     else:
         return ctx.workspace_name + "/" + file.short_path
 
+def _find_load_file(files):
+    for file in files:
+        if file.path.endswith("load.bash"):
+            return file.path
+    fail("Can't find `load.bash` file")
+
+def _target_tool_short_path(path):
+    return ("../" + path[len("external/"):]) if path.startswith("external/") else path
+
 def _bats_toolchain_impl(ctx):
-    if ctx.attr.target_tool and ctx.attr.target_tool_path:
-        fail("Can only set one of target_tool or target_tool_path but both were set.")
+    bin_files = ctx.attr.bin.files.to_list()
+    bin_path = _to_manifest_path(ctx, bin_files[0])
+    files = ctx.attr.files.files.to_list()
+    variables = {}
 
-    tool_files = []
-    target_tool_path = ctx.attr.target_tool_path
-
-    if ctx.attr.target_tool:
-        tool_files = ctx.attr.target_tool.files.to_list()
-        target_tool_path = _to_manifest_path(ctx, tool_files[0])
-
-    if ctx.attr.target_tool_files:
-        tool_files = tool_files + ctx.attr.target_tool_files.files.to_list()
-
-    template_variables = platform_common.TemplateVariableInfo({
-        "BATS_BIN": target_tool_path,
-    })
+    for (f, n) in ctx.attr.libs.items():
+        lib_files = f.files.to_list()
+        load_file_path = _find_load_file(lib_files)
+        files += lib_files
+        variables[n.upper().replace("-", "_")] = _target_tool_short_path(load_file_path)
 
     default = DefaultInfo(
-        files = depset(tool_files),
-        runfiles = ctx.runfiles(files = tool_files),
+        files = depset(files),
+        runfiles = ctx.runfiles(files = files),
     )
 
     batsinfo = BatsInfo(
-        target_tool_path = target_tool_path,
-        tool_files = tool_files,
+        bin = bin_path,
+        files = files,
     )
+
+    template_variables = platform_common.TemplateVariableInfo(variables)
 
     toolchain_info = platform_common.ToolchainInfo(
         batsinfo = batsinfo,
-        template_variables = template_variables,
         default = default,
+        template_variables = template_variables,
     )
 
     return [
@@ -61,23 +67,20 @@ def _bats_toolchain_impl(ctx):
 bats_toolchain = rule(
     implementation = _bats_toolchain_impl,
     attrs = {
-        "target_tool": attr.label(
-            doc = "A hermetically downloaded executable target for the target platform.",
-            mandatory = False,
+        "bin": attr.label(
+            doc = "BATS binary file",
+            mandatory = True,
             allow_single_file = True,
         ),
-        "target_tool_files": attr.label(
-            doc = "Files required in runfiles to make the tool executable available.",
-            mandatory = False,
+        "files": attr.label(
+            doc = "BATS files needed to execute the tests",
+            mandatory = True,
             allow_files = True,
         ),
-        "target_tool_path": attr.string(
-            doc = "Path to an existing executable for the target platform.",
-            mandatory = False,
+        "libs": attr.label_keyed_string_dict(
+            doc = "BATS helper libraries",
         ),
     },
-    doc = """Defines a bats compiler/runtime toolchain.
-
-For usage see https://docs.bazel.build/versions/main/toolchains.html#defining-toolchains.
-""",
+    doc = """BATS toolchain
+See: https://github.com/bats-core""",
 )

@@ -7,7 +7,9 @@ load("//bats/private:versions.bzl", "TOOL_VERSIONS")
 
 def _smoke_test_impl(ctx):
     env = unittest.begin(ctx)
-    asserts.equals(env, "1.14.2", TOOL_VERSIONS.keys()[0])
+    first_pkg_name = TOOL_VERSIONS.keys()[0]
+    asserts.equals(env, "bats-core", first_pkg_name)
+    asserts.equals(env, "1.10.0", TOOL_VERSIONS[first_pkg_name].keys()[0])
     return unittest.end(env)
 
 # The unittest library requires that we export the test cases as named test rules,

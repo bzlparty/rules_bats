@@ -7,5 +7,8 @@ local_path_override(
 )
 
 bats = use_extension("@rules_bats//bats:extensions.bzl", "bats")
-bats.toolchain(bats_version = "1.10.0")
-use_repo(bats, "bats_toolchains")
+bats.toolchain(
+    name = "bats_1_10",
+    version = "1.10.0",
+)
+use_repo(bats, "bats_1_10_toolchain")

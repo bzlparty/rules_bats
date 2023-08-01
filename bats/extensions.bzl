@@ -10,7 +10,7 @@ names (the latest version will be picked for each name) and can register them as
 effectively overriding the default named toolchain due to toolchain resolution precedence.
 """
 
-load(":repositories.bzl", "bats_register_toolchains")
+load(":repositories.bzl", "DEFAULT_LIBS", "bats_register_toolchain")
 
 _DEFAULT_NAME = "bats"
 
@@ -19,36 +19,29 @@ bats_toolchain = tag_class(attrs = {
 Base name for generated repositories, allowing more than one bats toolchain to be registered.
 Overriding the default is only permitted in the root module.
 """, default = _DEFAULT_NAME),
-    "bats_version": attr.string(doc = "Explicit version of bats.", mandatory = True),
+    "version": attr.string(doc = "Explicit version of bats-core.", mandatory = True),
+    "libs": attr.string_dict(doc = "Helper libraries for BATS", mandatory = False),
 })
 
+def _already_registered(registrations, item):
+    for i in registrations:
+        if i[0] == item[0] and i[1] == item[1]:
+            return True
+    return False
+
 def _toolchain_extension(module_ctx):
-    registrations = {}
+    registrations = []
     for mod in module_ctx.modules:
         for toolchain in mod.tags.toolchain:
-            if toolchain.name != _DEFAULT_NAME and not mod.is_root:
-                fail("""\
-                Only the root module may override the default name for the bats toolchain.
-                This prevents conflicting registrations in the global namespace of external repos.
-                """)
-            if toolchain.name not in registrations.keys():
-                registrations[toolchain.name] = []
-            registrations[toolchain.name].append(toolchain.bats_version)
-    for name, versions in registrations.items():
-        if len(versions) > 1:
-            # TODO: should be semver-aware, using MVS
-            selected = sorted(versions, reverse = True)[0]
-
-            # buildifier: disable=print
-            print("NOTE: bats toolchain {} has multiple versions {}, selected {}".format(name, versions, selected))
-        else:
-            selected = versions[0]
-
-        bats_register_toolchains(
-            name = name,
-            bats_version = selected,
-            register = False,
-        )
+            current = (toolchain.name, toolchain.version)
+            if not _already_registered(registrations, current):
+                bats_register_toolchain(
+                    name = toolchain.name,
+                    libs = toolchain.libs if len(toolchain.libs) > 0 else DEFAULT_LIBS,
+                    version = toolchain.version,
+                    register = False,
+                )
+                registrations.append(current)
 
 bats = module_extension(
     implementation = _toolchain_extension,
